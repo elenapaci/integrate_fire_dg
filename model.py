@@ -39,9 +39,17 @@ n_pp = 6
 n_gc = 2
 n_sy=6
 
-synapses=[[] for i in range(n_sy)]
+synapses=[]
 synapses=[Synapse(e_s,rmg_bars,p,tau_s,s) for i in range(n_sy)]
 
+while t<t1:
+    synapses[0].update(delta_t)
+    synapses[1].update(delta_t)
+    synapses[2].update(delta_t)
+    synapses[3].update(delta_t)
+    synapses[4].update(delta_t)
+    synapses[5].update(delta_t)
+    
     
 pp_spikes=[[] for i in range(n_pp)]
 pp_v=[Perforant_pathway(lambd,t_ref,t0) for i in range(n_pp)]
@@ -61,20 +69,26 @@ while t<t1:
         if gc.spike():
                 gc_spikes.append(gc.spike)
     t+=delta_t
-          
+    
+pre_v=neuron.pre_v
+v=neuron.v
+for p in pre_v:
+    synpases[p].get_current(v)
+    if neuron.update(current):
+        spikes_synpases.concatenate(neuron.pre_v)
+         
 spikes=np.concatenate((pp_spikes,gc_spikes))
 spikes_color=["g" for i in range(len(pp_spikes))]
 for i in range (len(gc_spikes)):
     spikes_color.append("r")
 
-        
 for pp in pp_v:
     if pp.update(t):
         syn_list=pp.post_v
         for syn_i in syn_list:
             synapses[syn_i].spike()
             
-synapses.append(synapses(-1))
+synapses.append((synapses)-1)
 new_syn_i=len(synapses)-1
 pp[0].add_post(new_syn_i)
 gc[0].add_pre(new_syn_i)
