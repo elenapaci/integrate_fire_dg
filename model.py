@@ -7,6 +7,9 @@ from Neuron_Synapse import Synapse
 from Perforant_pathway import Perforant_pathway
 import pandas 
 
+
+#parameters
+
 hz=1.
 sec=1.
 ms=0.001
@@ -35,51 +38,79 @@ s=0
 
 v_spike=0.
 
+electrode_current=0.01
+
 n_pp = 6
 n_gc = 2
 n_sy=6
 
-synapses=[[] for i in range(n_sy)]
-synapses=[Synapse(e_s,rmg_bars,p,tau_s,s) for i in range(n_sy)]
+#create functions for connectivity and neuron
 
-    
+def connect(pre_neuron,post_neuron,synapses):
+    synapses.append(Synapse(e_s, rmg_bars, p, tau_s, s))
+    synapse_n=len(synapses)-1
+
+    pre_neuron.add_post(synapse_n)
+    post_neuron.add_pre(synapse_n)
+
+def do_neuron(neuron,synapses,spikes,electrode_current):
+    voltage=neuron.v
+    current=electrode_current
+    for pre_s in neuron.pre:
+        current+=synapses[pre_s].get_current(voltage)
+        
+    if(n.update(current)):
+        for s in neuron.post:
+            spikes.append(s)
+            
+#create 
+  
 pp_spikes=[[] for i in range(n_pp)]
-pp_v=[Perforant_pathway(lambd,t_ref,t0) for i in range(n_pp)]
+pp=[Perforant_pathway(lambd,t_ref,t0) for i in range(n_pp)]
     
-while t<t1:
-    for pp_c,pp in enumerate(pp_v):
-        if pp.update(t):
-            pp_spikes[pp_c].append(t)
-    t+=delta_t
+gc_spikes=[[] for i in range(n_gc)]
+gc=[Neuron(e_l,v_t,v_r,tau_m,v) for i in range(n_gc)]
+
+
+
+#connect pp -> gc
+
+connect(pp[0],gc[1],synapses)
+connect(pp[1],gc[1],synapses)
+connect(pp[1],gc[2],synapses)
+connect(pp[2],gc[1],synapses)
+connect(pp[2],gc[2],synapses)   
+connect(pp[3],gc[2],synapses)
     
-gc_spikes=[]
-gc_v=[Neuron(e_l,v_t,v_r,tau_m,v) for i in range(n_gc)]
+#update
 
 while t<t1:
-    for gc_c,gc in enumerate(gc_v):
-        gc.update(rmIe,delta_t)
-        if gc.spike():
-                gc_spikes.append(gc.spike)
+    
+    for s in synapses:
+        s.update()
+        
+    spikes=[]
+
+    for p in pp:
+        do_neuron(neuron,synapses,spikes,electrode_current)
+ 
+    for g in gc:
+        do_neuron(neuron ,synapses,spikes,electrode_current)
+
+
+    for s in spikes:
+        synapses[s].spike()
+                
+    
     t+=delta_t
-          
+
 spikes=np.concatenate((pp_spikes,gc_spikes))
+
 spikes_color=["g" for i in range(len(pp_spikes))]
 for i in range (len(gc_spikes)):
     spikes_color.append("r")
-
-        
-for pp in pp_v:
-    if pp.update(t):
-        syn_list=pp.post_v
-        for syn_i in syn_list:
-            synapses[syn_i].spike()
-            
-synapses.append(synapses(-1))
-new_syn_i=len(synapses)-1
-pp[0].add_post(new_syn_i)
-gc[0].add_pre(new_syn_i)
-
-
+  
+ #plot spikes      
 fig = plt.figure()
 ax = raster(spikes,colors)
 plt.title('Example raster plot')
